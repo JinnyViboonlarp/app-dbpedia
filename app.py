@@ -1,7 +1,6 @@
 """app.py
 
 Wrapping DBpedia Spotlight to do named entity recognition and linking.
-Relations between named entities would also be extracted.
 
 Usage:
 
@@ -59,6 +58,13 @@ semi_truecase_choice = False # choice to capitalize the already-recognized named
 
 app_identifier = 'https://apps.clams.ai/dbpedia_spotlight'
 
+def overlap(e1_range, e2_range): # tuple parameter is not supported in Python 3. So I have to unpack it
+    (start_e1, end_e1) = e1_range
+    (start_e2, end_e2) = e2_range
+    if((start_e1 < end_e2) and (end_e1 > start_e2)): # in other words, (start_e1 <= (end_e2-1)) and ((end_e1-1) >= start_e2)
+        return True
+    return False
+
 class SpacyApp(ClamsApp):
 
     def _appmetadata(self):
@@ -74,10 +80,9 @@ class SpacyApp(ClamsApp):
             mmif_version=MMIF_VERSION
         )
         metadata.add_input(DocumentTypes.TextDocument)
-        metadata.add_input(Uri.NE)
-        metadata.add_input(Uri.DEPENDENCY)
+        if(semi_truecase_choice):
+            metadata.add_input(Uri.NE)
         metadata.add_output(Uri.NE)
-        metadata.add_output(Uri.GENERIC_RELATION)
         return metadata
 
     def _annotate(self, mmif, **kwargs):
@@ -94,7 +99,10 @@ class SpacyApp(ClamsApp):
         Identifiers.reset()
         self.mmif = mmif if type(mmif) is Mmif else Mmif(mmif)
         for doc in text_documents(self.mmif.documents):
-            doc_view = get_view_with_ne(self.mmif.get_views_for_document(doc.id))
+            if(semi_truecase_choice):
+                doc_view = get_view_with_ne(self.mmif.get_views_for_document(doc.id))
+            else:
+                doc_view = None
             new_view = self._new_view(doc.id)
             self._add_tool_output(doc, doc_view, new_view)
         for view in list(self.mmif.views):
@@ -103,7 +111,10 @@ class SpacyApp(ClamsApp):
                 new_view = self._new_view()
                 for doc in docs:
                     doc_id = view.id + ':' + doc.id
-                    doc_view = get_view_with_ne(self.mmif.get_views_for_document(doc_id))
+                    if(semi_truecase_choice):
+                        doc_view = get_view_with_ne(self.mmif.get_views_for_document(doc_id))
+                    else:
+                        doc_view = None
                     self._add_tool_output(doc, doc_view, new_view, doc_id=doc_id)
                      
         return self.mmif
@@ -111,8 +122,7 @@ class SpacyApp(ClamsApp):
     def _new_view(self, docid=None):
         view = self.mmif.new_view()
         self.sign_view(view)
-        for attype in (Uri.NE, Uri.GENERIC_RELATION):
-            view.new_contain(attype, document=docid)
+        view.new_contain(Uri.NE, document=docid)
         return view
 
     def _read_text(self, textdoc):
@@ -153,18 +163,19 @@ class SpacyApp(ClamsApp):
 
         text_orig = self._read_text(doc)
         input_text = text_orig
-        ne_annotations = doc_view.get_annotations(at_type=Uri.NE)
-        ne_annotations = get_annotations_with_doc_id(ne_annotations, doc_id)
-        # store named entities in doc_view in a dict, using (start, end) as key
-        entity_dict = {}
-        for annotation in ne_annotations:
-            entity_properties = annotation.properties
-            entity_dict[(entity_properties['start'],entity_properties['end'])] = entity_properties
+        if(doc_view != None):
+            ne_annotations = doc_view.get_annotations(at_type=Uri.NE)
+            ne_annotations = get_annotations_with_doc_id(ne_annotations, doc_id)
+            # store named entities in doc_view in a dict, using (start, end) as key
+            entity_dict = {}
+            for annotation in ne_annotations:
+                entity_properties = annotation.properties
+                entity_dict[(entity_properties['start'],entity_properties['end'])] = entity_properties
 
         # there is an option that the text is 'semi-truecased' (i.e. only named entities are capitalized) \
         # before going to the dbpedia pipeline. This is necessary if the text is lowercase since dbpedia \
         # has low recall for uncased person names.
-        if(semi_truecase_choice == True):
+        if(semi_truecase_choice == True): # which also mean that doc_view != None
             input_text_list = list(input_text.lower()) # python string is immutable, but we want to modify input_text
             for (start, end) in entity_dict.keys():
                 entity_text = input_text[start:end]
@@ -174,66 +185,30 @@ class SpacyApp(ClamsApp):
             input_text = "".join(input_text_list)
             #print(input_text)
 
+        # since dbpedia_spotlight calls outside database, there is a slim chance that it will fail \
+        # we will loop here until it succeeds
+        calling_success = False
+        while(calling_success == False):
+            try:
+                spacy_doc = nlp(input_text)
+                calling_success = True
+            except:
+                pass
+
         # keep track of char offsets of all tokens
-        spacy_doc = nlp(input_text)
         tok_idx = {}
         for (n, tok) in enumerate(spacy_doc):
             p1 = tok.idx
             p2 = p1 + len(tok.text)
             tok_idx[n] = (p1, p2)
 
-        # do an NER task, only entities that are recognized both here and in doc_view \
-        # will get annotated to the new view and will be kept in entity_dict_2
-        entity_dict_2 = {}
+        # do an NER task
         for (n, ent) in enumerate(spacy_doc.ents):
-                start = tok_idx[ent.start][0]; end = tok_idx[ent.end - 1][1]
-                if((start, end) in entity_dict):
-                    category = find_dbpedia_type(ent)
-                    if(category != None):
-                        properties = { "text": text_orig[start:end], "category": entity_dict[(start,end)]["category"], \
-                                       "kb_category": category, "kb_id": ent.kb_id_}
-                        add_annotation(view, Uri.NE, Identifiers.new("ne"), doc_id, start, end, properties)
-                        entity_dict_2[(start,end)] = properties
-
-        # Now we're going to iterate over dependencies
-        # for a token representing an entity that are in entity_dict_2, \
-        # its governer token will be kept in governer_dict \
-        # we will also use this dict to check if one governer token has >= 2 dependent entities \
-        # in that case, we will annotate the entities and add their relations to the view
-        dep_annotations = doc_view.get_annotations(at_type=Uri.DEPENDENCY)
-        dep_annotations = get_annotations_with_doc_id(dep_annotations, doc_id)
-        governer_dict = {}
-        for annotation in dep_annotations:
-            dependent_span_token = (annotation.properties['dependent_start'], annotation.properties['dependent_end'])
-            # dependent_span_token is at token level, e.g., for the entity 'Jim Lehrer', it may span only 'Jim' or 'Lehrer' \
-            # but we will retrieve the whole entity span here
-            def find_entity_span(span_token):
-                for (start, end) in entity_dict_2.keys():
-                    if((span_token[0]>= start) and (span_token[1]<= end)):
-                        return (start, end)
-                return None
-            dependent_span = find_entity_span(dependent_span_token)
-            if(dependent_span != None):
-                governer_span = (annotation.properties['governer_start'], annotation.properties['governer_end'])
-                # governer_span is one-token-long too, but it doesn't matter since the governers we're interested in are single-token verbs
-                if governer_span not in governer_dict:
-                    governer_dict[governer_span] = [{'dependent_span': dependent_span, 'dep': annotation.properties['dep']}]
-                else: # this is the case where one governer token has >= 2 dependent entities
-                    # the first entity (e1) is already in the dict, the second (e2) is the 'dependent' of this annotation
-                    e2 = annotation.properties
-                    e2_span = dependent_span
-                    for e1 in governer_dict[governer_span]:
-                        e1_span = e1['dependent_span']
-                        relation_properties = { "rel_text": e2['governer_text'], "rel_lemma": e2['governer_lemma'], \
-                                                "rel_start": e2['governer_start'], "rel_end": e2['governer_end'], \
-                                                "e1_text": entity_dict_2[e1_span]['text'], "e1_kb_id": entity_dict_2[e1_span]['kb_id'], \
-                                                "e1_dep": e1['dep'], "e1_start": e1['dependent_span'][0], "e1_end": e1['dependent_span'][1], \
-                                                "e2_text": entity_dict_2[e2_span]['text'], "e2_kb_id": entity_dict_2[e2_span]['kb_id'], \
-                                                "e2_dep": e2['dep'], "e2_start": e2['dependent_start'], "e2_end": e2['dependent_end'] }
-                        add_annotation(
-                            view, Uri.GENERIC_RELATION, Identifiers.new("rel"),
-                            doc_id, None, None, relation_properties)
-                    governer_dict[governer_span] += [{'dependent_span': e2_span, 'dep': e2['dep']}]
+            start = tok_idx[ent.start][0]; end = tok_idx[ent.end - 1][1]
+            category = find_dbpedia_type(ent)
+            if(category != None):
+                properties = { "text": text_orig[start:end], "kb_category": category, "kb_id": ent.kb_id_}
+                add_annotation(view, Uri.NE, Identifiers.new("ne"), doc_id, start, end, properties)       
 
 def text_documents(documents):
     """Utility method to get all text documents from a list of documents."""
