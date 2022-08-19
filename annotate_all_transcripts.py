@@ -1,5 +1,6 @@
 import os
 import sys
+import argparse
 
 def annotate_input_mmif_files_without_docker(uncased_choice = False):
     # this module is used to test the clams app on all transcripts, without Docker  
@@ -38,4 +39,14 @@ def annotate_input_mmif_files(uncased_choice = False):
 if __name__ == "__main__":
 
     #annotate_input_mmif_files_without_docker()
-    annotate_input_mmif_files(uncased_choice = True)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--uncased',  action='store_true', help="capitalize the already-recognized named entities")
+    args = parser.parse_args()
+
+    if args.uncased:
+        uncased_choice = True
+    else:
+        uncased_choice = False
+        
+    annotate_input_mmif_files(uncased_choice)
