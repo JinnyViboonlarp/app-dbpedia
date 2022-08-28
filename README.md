@@ -60,7 +60,7 @@ The spaCy code will run on each text document in the input MMIF file. The file `
 ```
 Instead of a `text:@value` property the text could in an external file, which would be given as a URI in the `location` property. See the readme file in [https://github.com/clamsproject/app-nlp-example](https://github.com/clamsproject/app-nlp-example) on how to do this.
 
-## Using this service with an uncased NER model
+## Using this service with a "truecasing trick" for uncased text data
 
 The DBpedia Spotlight NER (Named Entity Recognition) is optimized for cased input, but is not robust against lowercase input. For example, many person names, if in lowercase, would not be recognized and linked to their respective DBpedia pages. However, the recall could be significantly improved when these named entities are capitalized.
 
