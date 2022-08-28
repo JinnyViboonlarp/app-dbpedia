@@ -51,10 +51,10 @@ The spaCy code will run on each text document in the input MMIF file. The file `
 {
   "@type": "http://mmif.clams.ai/0.4.0/vocabulary/TextDocument",
   "properties": {
-   "text": {
+    "text": {
       "@value": "Hello, this is Jim Lehrer with the NewsHour on PBS...."
     },
-	  "id": "td1"
+    "id": "td1"
   }
 }
 ```
