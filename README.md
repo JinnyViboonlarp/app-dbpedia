@@ -64,42 +64,15 @@ Instead of a `text:@value` property the text could in an external file, which wo
 
 The DBpedia Spotlight NER (Named Entity Recognition) is optimized for cased input, but is not robust against lowercase input. For example, many person names, if in lowercase, would not be recognized and linked to their respective DBpedia pages. However, the recall could be significantly improved when these named entities are capitalized.
 
-As a result, when running `app.py`, an option could be specified so that the app would scan the input mmif file for named entities (i.e. annotations of the 'NamedEntity' type) as recognized by a spaCy model (which, in practice, means the uncased NER model from [this repo](https://github.com/JinnyViboonlarp/app-spacy-nlp-ner#using-this-service-with-an-uncased-ner-model)), and then capitalize all instances of 
+As a result, when running `app.py`, an option could be specified so that the app would scan the input mmif file for named entities (i.e. annotations of the 'NamedEntity' type) as recognized by a spaCy model (which, in practice, means the uncased NER model from [this repo](https://github.com/JinnyViboonlarp/app-spacy-nlp-ner#using-this-service-with-an-uncased-ner-model)), and then capitalize the corresponding instances of these named entities in the texts in the mmif file. This method is informally called the "truecasing trick" and is shown to improve the app's NER capacity when the input texts are in lowercase.
 
-
-
-NER task is performed by a custom-trained model, optimized for lowercase data (which is the same model as `trained_models/model-best-uncased-sm` in [this repository](https://github.com/JinnyViboonlarp/clams-spacy-tuning-ner), while the other NLP tasks (such as POS tagging, lemmatizer, and sentence tokenizer) would still be performed by the default spaCy model.
-
-To test the app **without** the custom-trained NER model, run the below command on your terminal. The app would use the spaCy NLP model (`en-core-web-sm`) to do the NER task.
+To test the app **without** the truecasing trick, run the below command on your terminal. This is recommended when the input text is **cased**.
 
 ```
 $ python app.py -t example-mmif.json out.json
 ```
 
-To test the app **with** the custom-trained NER model for uncased data, use this command instead.
-
-```
-$ python app.py -t -u example-mmif-uncased.json out-uncased.json
-```
-
-## Using this service with a dependency parser
-
-The argument `--dep` tells the spaCy NLP model to do dependency parsing on the input text.
-
-```
-$ python app.py -t --dep example-mmif.json out.json
-```
-
-
-### Usage
-
-testing mmif input file with cased texts
-
-```
-$ python app.py -t example-mmif.json out.json
-```
-
-testing mmif input file with uncased texts (with the semi-truecase option)
+To test the app **with** the truecasing trick, use this command instead. This is recommended when the input text is **uncased**.
 
 ```
 $ python app.py -t --truecase example-mmif-uncased.json out-uncased.json
