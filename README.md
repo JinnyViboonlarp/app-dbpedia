@@ -19,7 +19,7 @@ $ python -m spacy download en_core_web_sm
 
 ## Using this service
 
-Use `python app.py -t example-mmif.json out.json` just to test the wrapping code without using a server. To test this using a server you run the app as a service in one terminal (when you add the optional  `--develop` parameter a Flask server will be used in development mode, otherwise you will get a production Gunicorn server):
+Use `python app.py -t input-mmif/example-transcript.json output-mmif/example-transcript.json` just to test the wrapping code without using a server. To test this using a server you run the app as a service in one terminal (when you add the optional  `--develop` parameter a Flask server will be used in development mode, otherwise you will get a production Gunicorn server):
 
 ```bash
 $ python app.py [--develop]
