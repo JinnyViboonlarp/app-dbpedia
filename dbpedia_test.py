@@ -13,10 +13,12 @@ if __name__ == "__main__":
     doc = nlp('Hello, this is Jim Lehrer with the NewsHour on PBS. In the nineteen eighties, barking dogs have increasingly become a problem in urban areas.')
     # see the entities
     print('Entities', [(ent.text, ent.label_, ent.kb_id_) for ent in doc.ents])
-    # output: Entities [('Jim Lehrer', 'DBPEDIA_ENT', 'http://dbpedia.org/resource/Jim_Lehrer'), ('PBS', 'DBPEDIA_ENT', 'http://dbpedia.org/resource/PBS')]
+    # Entities [('Jim Lehrer', 'DBPEDIA_ENT', 'http://dbpedia.org/resource/Jim_Lehrer'),
+    # ('PBS', 'DBPEDIA_ENT', 'http://dbpedia.org/resource/PBS')]
     
     # inspect the raw data from DBpedia spotlight
     print(doc.ents[0]._.dbpedia_raw_result)
     """ output: {'@URI': 'http://dbpedia.org/resource/Jim_Lehrer', '@support': '197',
 '@types': 'Http://xmlns.com/foaf/0.1/Person,Wikidata:Q5,Wikidata:Q24229398,Wikidata:Q215627,DUL:NaturalPerson,DUL:Agent,Schema:Person,DBpedia:Agent,DBpedia:Person',
-'@surfaceForm': 'Jim Lehrer', '@offset': '15', '@similarityScore': '1.0', '@percentageOfSecondRank': '0.0'} """
+'@surfaceForm': 'Jim Lehrer', '@offset': '15', '@similarityScore': '1.0',
+'@percentageOfSecondRank': '0.0'} """

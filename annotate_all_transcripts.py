@@ -21,8 +21,9 @@ def annotate_input_mmif_files_without_docker(uncased_choice = False):
 
 def annotate_input_mmif_files(uncased_choice = False):
     # this module is used to test the clams app on all transcripts, with Docker
-    # the docker container must first be running
-    # The commands are "docker build -t clams-dbpedia -f Dockerfile-cased ." (or Dockerfile-uncased if truecase option) \
+    # the Docker container must first be built and running
+    # The commands are "docker build -t clams-dbpedia -f Dockerfile-cased ."
+    # (or Dockerfile-uncased if truecase option)
     # and then "docker run --rm -d -p 5000:5000 clams-dbpedia"
     if(uncased_choice):
         in_dir = 'input-mmif-uncased'

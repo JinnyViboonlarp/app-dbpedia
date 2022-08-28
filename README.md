@@ -64,7 +64,8 @@ Instead of a `text:@value` property the text could in an external file, which wo
 
 The DBpedia Spotlight NER (Named Entity Recognition) is optimized for cased input, but is not robust against lowercase input. For example, many person names, if in lowercase, would not be recognized and linked to their respective DBpedia pages. However, the recall could be significantly improved when these named entities are capitalized.
 
-As a result, when running `app.py`, an option could be specified so that the app would scan the input mmif file for named entities (i.e. annotations of the 'NamedEntity' type) as recognized by a spaCy model (which, in practice, means the uncased NER model from [this repo](https://github.com/JinnyViboonlarp/app-spacy-nlp-ner#using-this-service-with-an-uncased-ner-model)), and then capitalize the corresponding instances of these named entities in the texts in the mmif file. This method is informally called the "truecasing trick" and is shown to improve the app's NER capacity when the input texts are in lowercase.
+As a result, when running `app.py`, an option could be specified so that the app would scan the input mmif file for named entities (i.e. annotations of the 'NamedEntity' type) as recognized by a spaCy model (which, in practice, means the uncased NER model from [this repo](https://github.com/JinnyViboonlarp/app-spacy-nlp-ner#using-this-service-with-an-uncased-ner-model)), and then capitalize the corresponding instances of these named entities in the texts in the mmif file. This method is informally called the "truecasing trick" and is shown to improve the app's NER capacity when the input texts are in lowercase. However, this is not a proper truecasing as the term is commonly used, since we do not aim to reconstruct grammatically correct cased texts.
+
 
 To test the app **without** the truecasing trick, run the below command on your terminal. This is recommended when the input text is **cased**.
 

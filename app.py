@@ -4,7 +4,7 @@ Wrapping DBpedia Spotlight to do named entity recognition and linking.
 
 Usage:
 
-$ python app.py -t example-mmif.json out.json
+$ python app.py -t input-mmif/example-transcript.json output-mmif/example-transcript.json
 $ python app.py [--develop]
 
 The first invocation is to just test the app without running a server. The
@@ -46,7 +46,7 @@ APP_LICENSE = 'Apache 2.0'
 MMIF_VERSION = '0.4.0'
 MMIF_PYTHON_VERSION = '0.4.6'
 CLAMS_PYTHON_VERSION = '0.5.1'
-SPACY_VERSION = '3.1.2'
+SPACY_VERSION = '3.3.1'
 SPACY_LICENSE = 'MIT'
 
 
@@ -54,14 +54,18 @@ SPACY_LICENSE = 'MIT'
 TEXT_DOCUMENT = os.path.basename(str(DocumentTypes.TextDocument))
 
 DEBUG = False
-semi_truecase_choice = False # choice to capitalize the already-recognized named entities
+
+# This is an option to capitalize the already-recognized named entities
+semi_truecase_choice = False
 
 app_identifier = 'https://apps.clams.ai/dbpedia_spotlight'
 
-def overlap(e1_range, e2_range): # tuple parameter is not supported in Python 3. So I have to unpack it
+def overlap(e1_range, e2_range):
+    # tuple parameter is not supported in Python 3. So I have to unpack it
     (start_e1, end_e1) = e1_range
     (start_e2, end_e2) = e2_range
-    if((start_e1 < end_e2) and (end_e1 > start_e2)): # in other words, (start_e1 <= (end_e2-1)) and ((end_e1-1) >= start_e2)
+    if((start_e1 < end_e2) and (end_e1 > start_e2)):
+        # in other words, (start_e1 <= (end_e2-1)) and ((end_e1-1) >= start_e2)
         return True
     return False
 
@@ -89,7 +93,8 @@ class SpacyApp(ClamsApp):
 
         def get_view_with_ne(views):
             # input: list of views that have annotations anchored on the same document.
-            # output: the view with NE annotation. If there are many views, only the last is returned
+            # output: the view with NE annotation. If there are many views,
+            # only the last is returned
             views.reverse()
             for view in views:
                 if(Uri.NE in list(view['metadata']['contains'].keys()) and view['metadata']['app'] != app_identifier):
@@ -172,11 +177,14 @@ class SpacyApp(ClamsApp):
                 entity_properties = annotation.properties
                 entity_dict[(entity_properties['start'],entity_properties['end'])] = entity_properties
 
-        # there is an option that the text is 'semi-truecased' (i.e. only named entities are capitalized) \
-        # before going to the dbpedia pipeline. This is necessary if the text is lowercase since dbpedia \
-        # has low recall for uncased person names.
+        # There is an option that the text is 'truecased' (i.e. only named
+        # entities are capitalized) before going to the dbpedia pipeline. This is
+        # necessary if the text is lowercase, since dbpedia has low recall for
+        # uncased person names.
         if(semi_truecase_choice == True): # which also mean that doc_view != None
-            input_text_list = list(input_text.lower()) # python string is immutable, but we want to modify input_text
+
+            # python string is immutable, but we want to modify input_text
+            input_text_list = list(input_text.lower())
             for (start, end) in entity_dict.keys():
                 entity_text = input_text[start:end]
                 for m in re.finditer(r'\S+', entity_text):
@@ -185,8 +193,8 @@ class SpacyApp(ClamsApp):
             input_text = "".join(input_text_list)
             #print(input_text)
 
-        # since dbpedia_spotlight calls outside database, there is a slim chance that it will fail \
-        # we will loop here until it succeeds
+        # Since dbpedia_spotlight calls outside database, there is a slim chance
+        # that it will fail, so we will loop here until it succeeds.
         calling_success = False
         while(calling_success == False):
             try:
